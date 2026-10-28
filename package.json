@@ -41,7 +41,8 @@
     "docker:up": "docker compose --env-file .env --env-file .env.production up -d --no-build",
     "docker:down": "docker compose --env-file .env --env-file .env.production down",
     "docker:rmi": "docker compose --env-file .env --env-file .env.production stop nest-admin-server && docker container rm nest-admin-server && docker rmi nest-admin-server",
-    "docker:logs": "docker compose --env-file .env --env-file .env.production logs -f"
+    "docker:logs": "docker compose --env-file .env --env-file .env.production logs -f",
+    "user:reset-password": "node scripts/reset-password.mjs"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
