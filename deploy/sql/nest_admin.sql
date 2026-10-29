@@ -14,6 +14,9 @@
  Date: 28/02/2024 22:35:41
 */
 
+create database if not exists db_wpm_app;
+use db_wpm_app;
+
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 

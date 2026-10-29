@@ -53,6 +53,21 @@ export class MobileAdminController {
     return this.auditService.list(id, query, user)
   }
 
+  @Get('users')
+  @Perm(permissions.PROJECT)
+  @ApiOperation({ summary: '可选成员（启用账号，标记是否已加入项目，PC 端分配用）' })
+  async users(
+    @Query('keyword') keyword?: string,
+    @Query('projectId') projectId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.projectService.listAssignable({
+      keyword,
+      projectId: projectId ? Number(projectId) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    })
+  }
+
   @Get('overview')
   @Perm(permissions.LEDGER)
   @ApiOperation({ summary: '全部项目汇总（跨项目看板，管理员或已授权角色）' })

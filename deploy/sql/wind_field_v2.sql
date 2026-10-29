@@ -8,6 +8,7 @@
 -- 执行：mysql -h127.0.0.1 -P3306 -uroot -p db_wpm_app < deploy/sql/wind_field_v2.sql
 -- 特性：可重复执行（每次重建）；外键保证引用完整性；软删除保留审计价值
 -- ============================================================================
+use db_wpm_app;
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;

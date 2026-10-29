@@ -293,13 +293,30 @@ export class MobileLedgerService {
     }
   }
 
-  /** 项目整体汇总，PC 端看板同源 */
+  /**
+   * 项目整体汇总，PC 端看板同源。
+   *
+   * 这里直接聚合基表，不再依赖 `vw_project_summary` 视图：
+   * 视图只存在于 deploy/sql 里，而开发环境靠 TypeORM synchronize 建表，
+   * 视图不会被创建，页面就会因为「表不存在」整体报错。
+   */
   async projectSummaries() {
     const rows = await this.unitRepository.manager.query(
-      `SELECT id, code, name, status, capacity_mw AS capacityMw, unit_total AS unitTotal,
-              unit_done AS unitDone, entry_total AS entryTotal, entry_pending AS entryPending,
-              attachment_total AS attachmentTotal
-         FROM vw_project_summary ORDER BY id ASC`,
+      `SELECT p.id, p.code, p.name, p.status, p.capacity_mw AS capacityMw,
+              (SELECT COUNT(*) FROM wf_unit u
+                WHERE u.project_id = p.id AND u.deleted_at = ?) AS unitTotal,
+              (SELECT COUNT(*) FROM wf_unit u
+                WHERE u.project_id = p.id AND u.status = 'done' AND u.deleted_at = ?) AS unitDone,
+              (SELECT COUNT(*) FROM wf_entry e
+                WHERE e.project_id = p.id AND e.status = 'submitted' AND e.deleted_at = ?) AS entryTotal,
+              (SELECT COUNT(*) FROM wf_entry e
+                WHERE e.project_id = p.id AND e.status = 'submitted'
+                  AND e.review_status = 'pending' AND e.deleted_at = ?) AS entryPending,
+              (SELECT COUNT(*) FROM wf_attachment a
+                WHERE a.project_id = p.id) AS attachmentTotal
+         FROM wf_project p
+        ORDER BY p.id ASC`,
+      [notDeleted(), notDeleted(), notDeleted(), notDeleted()],
     ) as Array<Record<string, any>>
     return rows.map(row => ({
       id: row.id,

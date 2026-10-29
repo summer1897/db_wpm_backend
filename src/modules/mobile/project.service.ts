@@ -57,7 +57,11 @@ export class MobileProjectService {
     return project
   }
 
-  /** 我参与的项目：管理员返回全部；未配置成员时按记录员兜底，避免现场首次使用被卡 */
+  /**
+   * 我参与的项目：管理员返回全部，其他账号只返回被加入的项目。
+   * 不再对「未配置成员」的账号兜底返回全部项目——项目由后台分配，
+   * 没被加入的人登录后应当看不到任何项目，而不是看到全部项目。
+   */
   async listMine(user: IAuthUser) {
     const isAdmin = Boolean(user.roles?.includes('admin'))
     if (isAdmin) {
@@ -66,13 +70,8 @@ export class MobileProjectService {
     }
 
     const members = await this.memberRepository.findBy({ userId: user.uid, status: 1 })
-    if (!members.length) {
-      const projects = await this.projectRepository.find({
-        where: { status: 'active' },
-        order: { id: 'ASC' },
-      })
-      return projects.map(item => this.toClient(item, 'recorder'))
-    }
+    if (!members.length)
+      return []
 
     const projects = await this.projectRepository.findBy({
       id: In(members.map(item => item.projectId)),
@@ -107,13 +106,24 @@ export class MobileProjectService {
     return member?.role || 'recorder'
   }
 
-  /** 可读：成员即可 */
+  /**
+   * 可读：必须是项目成员（管理员除外）。
+   * 这里必须严格校验——只靠前端隐藏入口挡不住直接调接口，
+   * 否则没被分配到项目的人仍能新增风机、拍照、查台账。
+   */
   async assertAccess(projectId: number, user: IAuthUser) {
     await this.findById(projectId)
-    const role = await this.roleOf(projectId, user)
-    if (role === 'viewer')
-      return role
-    return role
+    if (user.roles?.includes('admin'))
+      return 'owner' as WfMemberRole
+
+    const member = await this.memberRepository.findOneBy({
+      projectId,
+      userId: user.uid,
+      status: 1,
+    })
+    if (!member)
+      throw new BusinessException(ErrorEnum.MOBILE_PROJECT_FORBIDDEN)
+    return (member.role || 'recorder') as WfMemberRole
   }
 
   /** 可审核/可管理：负责人或管理员 */
@@ -138,11 +148,27 @@ export class MobileProjectService {
       .skip(skip)
       .take(pageSize)
       .getManyAndCount()
+
+    // 成员数一并在列表里给出，PC 端不用为每一行再请求一次成员接口
+    const counts = items.length
+      ? (await this.memberRepository
+          .createQueryBuilder('m')
+          .select('m.project_id', 'projectId')
+          .addSelect('COUNT(*)', 'total')
+          .where('m.status = 1')
+          .andWhere('m.project_id IN (:...ids)', { ids: items.map(item => item.id) })
+          .groupBy('m.project_id')
+          .getRawMany()) as Array<{ projectId: number, total: string }>
+      : []
+    const memberCount = new Map(counts.map(row => [Number(row.projectId), Number(row.total)]))
+
     return {
       page,
       pageSize,
       total,
-      items: items.map(item => this.toClient(item, 'owner')),
+      items: items.map(item => this.toClient(item, 'owner', {
+        memberCount: memberCount.get(item.id) || 0,
+      })),
     }
   }
 
@@ -226,6 +252,36 @@ export class MobileProjectService {
     })
   }
 
+  /** PC 端选人：启用中的账号 + 是否已在该项目，管理员一次可加多人 */
+  async listAssignable(query: { keyword?: string, projectId?: number, limit?: number }) {
+    const qb = this.userRepository
+      .createQueryBuilder('u')
+      .leftJoinAndSelect('u.dept', 'dept')
+      .where('u.status = :status', { status: 1 })
+    if (query.keyword)
+      qb.andWhere('(u.username LIKE :kw OR u.nickname LIKE :kw)', { kw: `%${query.keyword}%` })
+
+    const users = await qb
+      .orderBy('u.id', 'ASC')
+      .take(Math.min(Number(query.limit) || 200, 500))
+      .getMany()
+
+    const members = query.projectId
+      ? await this.memberRepository.find({ where: { projectId: Number(query.projectId) } })
+      : []
+    const joined = new Map(members.map(item => [item.userId, item]))
+
+    return users.map(user => ({
+      id: user.id,
+      username: user.username,
+      nickname: user.nickname || '',
+      phone: user.phone || '',
+      deptName: user.dept?.name || '',
+      joined: joined.get(user.id)?.status === 1,
+      role: joined.get(user.id)?.role || '',
+    }))
+  }
+
   /** 成员角色设置：同一用户重复设置按更新处理 */
   async upsertMember(projectId: number, dto: ProjectMemberDto, user: IAuthUser) {
     await this.assertManager(projectId, user)
@@ -261,7 +317,11 @@ export class MobileProjectService {
     return { userId, removed: true }
   }
 
-  toClient(project: WfProjectEntity, role: WfMemberRole) {
+  toClient(
+    project: WfProjectEntity,
+    role: WfMemberRole,
+    extra: { memberCount?: number } = {},
+  ) {
     return {
       id: project.id,
       code: project.code,
@@ -278,6 +338,7 @@ export class MobileProjectService {
       ownerId: project.ownerId,
       remark: project.remark,
       role,
+      memberCount: extra.memberCount ?? undefined,
       createdAt: iso(project.createdAt),
       updatedAt: iso(project.updatedAt),
     }
