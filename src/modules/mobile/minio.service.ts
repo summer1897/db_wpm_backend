@@ -39,9 +39,9 @@ export class MinioService implements OnModuleInit {
     }
   }
 
-  /** 对象键约定：mobile/{scope}/{recordId}/{photoId}{ext} */
-  objectPath(scope: string, recordId: string, photoId: string, extname: string) {
-    return `mobile/${scope}/${recordId}/${photoId}${extname}`
+  /** 对象键约定：mobile/{scope}/{unitId|inbox}/{attachmentId}{ext} */
+  objectPath(scope: string, unitId: string, attachmentId: string, extname: string) {
+    return `mobile/${scope}/${unitId}/${attachmentId}${extname}`
   }
 
   async put(objectPath: string, buffer: Buffer, contentType: string): Promise<void> {

@@ -1,12 +1,13 @@
-import { Column, Entity } from 'typeorm'
+import { Column, Entity, Index } from 'typeorm'
 
 import { CommonEntity } from '~/common/entity/common.entity'
 
-/** 台账快照：管理员每次拉取台账归档一份，payload 保存明细。 */
+/** 台账快照：每次导出/归档固定当时的报送口径 */
 @Entity({ name: 'wf_ledger_snapshot' })
+@Index('IDX_snapshot_project', ['projectId', 'generatedAt'])
 export class WfLedgerSnapshotEntity extends CommonEntity {
-  @Column({ name: 'project_scope', type: 'char', length: 64, comment: '项目通道' })
-  projectScope: string
+  @Column({ name: 'project_id', type: 'int', comment: '项目' })
+  projectId: number
 
   @Column({ name: 'generated_at', type: 'datetime', precision: 6, comment: '生成时间' })
   generatedAt: Date
@@ -20,11 +21,14 @@ export class WfLedgerSnapshotEntity extends CommonEntity {
   })
   ledgerStatus: 'live' | 'receipts'
 
-  @Column({ name: 'total_records', default: 0, comment: '记录总数' })
-  totalRecords: number
+  @Column({ name: 'total_units', type: 'int', default: 0, comment: '事项数' })
+  totalUnits: number
 
-  @Column({ name: 'total_photos', default: 0, comment: '照片总数' })
-  totalPhotos: number
+  @Column({ name: 'total_entries', type: 'int', default: 0, comment: '记录数' })
+  totalEntries: number
+
+  @Column({ name: 'total_attachments', type: 'int', default: 0, comment: '附件数' })
+  totalAttachments: number
 
   @Column({ type: 'json', comment: '快照明细' })
   payload: Record<string, any>
