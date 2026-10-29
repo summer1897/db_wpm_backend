@@ -45,4 +45,17 @@ export enum ErrorEnum {
   OSS_FILE_OR_DIR_EXIST = '1401:当前创建的文件或目录已存在',
   OSS_NO_OPERATION_REQUIRED = '1402:无需操作',
   OSS_EXCEE_MAXIMUM_QUANTITY = '1403:已超出支持的最大处理数量',
+
+  // 移动端相关
+  MOBILE_RECORD_NOT_FOUND = '1500:施工记录不存在',
+  MOBILE_RECORD_OWNER_MISMATCH = '1501:无权操作他人施工记录',
+  MOBILE_PHOTO_NOT_FOUND = '1502:施工照片不存在',
+  MOBILE_PHOTO_META_INVALID = '1503:照片元数据缺失或不完整',
+  MOBILE_PROJECT_NOT_FOUND = '1504:项目通道不存在或已停用',
+  MOBILE_PROJECT_AMBIGUOUS = '1505:服务端存在多个项目，请携带项目通道标识',
+  MOBILE_STORAGE_UNAVAILABLE = '1506:文件存储服务不可用，请稍后重试',
+  MOBILE_FILE_TOO_LARGE = '1507:照片超出大小限制',
+  MOBILE_TYPE_INVALID = '1508:施工类型不存在',
+  MOBILE_SCOPE_MISMATCH = '1509:照片所属项目与提交记录不一致',
+  MOBILE_REJECT_REMARK_REQUIRED = '1510:退回修改必须填写原因',
 }
