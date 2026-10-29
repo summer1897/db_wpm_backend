@@ -13,7 +13,8 @@ export { app as fastifyApp }
 app.register(FastifyMultipart, {
   limits: {
     fields: 10, // Max number of non-file fields
-    fileSize: 1024 * 1024 * 6, // limit size 6M
+    // 移动端施工照片单张最大 20M（MAX_BYTES），留少量余量
+    fileSize: 1024 * 1024 * 25, // limit size 25M
     files: 5, // Max number of file fields
   },
 })
